@@ -12,6 +12,11 @@ Creates a virtual environment using python venv module, package and setup.py for
 |---__init__.py
 ```
 
+## Installation
+```console
+$ pip install .
+```
+
 ## Usage
 ```console
 $ python pyinit <project-name> [<target-dir>] [-a <author>] [-d <project-description>]
