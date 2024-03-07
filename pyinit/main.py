@@ -1,4 +1,5 @@
 import os
+import platform
 import re
 import subprocess
 import sys
@@ -8,14 +9,29 @@ from typing import IO, Union
 from pyinit import constants
 
 
-def eprint(msg: str, *args, file=sys.stderr, **kwargs):
+def _eprint(msg: str, *args, file=sys.stderr, **kwargs):
     msg = msg % args
     print(f"ERROR: {msg}", file=file, **kwargs)
 
 
-def iprint(msg: str, *args, file=sys.stdout, **kwargs):
+def _iprint(msg: str, *args, file=sys.stdout, **kwargs):
     msg = msg % args
     print(f"INFO: {msg}", file=file, **kwargs)
+
+
+system = platform.system()
+if system == "Windows":
+
+    def _which(cmd):
+        return subprocess.getoutput(f"where {cmd}")
+
+elif system == "Linux":
+
+    def _which(cmd):
+        return subprocess.getoutput(f"which {cmd}")
+
+else:
+    raise NotImplementedError(f"script not implemented for {system}")
 
 
 def _usage(prog: str, header_only: bool = False, file: IO = sys.stdout):
@@ -49,7 +65,7 @@ def _prompt(prompt: str) -> bool:
     data = input(f"{prompt} y/N{os.linesep}")
     data = data.strip()
     while not data in ("Y", "y", "n", "N"):
-        eprint("Invalid input '%s', please provide y/n", data)
+        _eprint("Invalid input '%s', please provide y/n", data)
         data = input(f"{prompt} y/N{os.linesep}")
         data = data.strip()
     return data in ("Y", "y")
@@ -66,7 +82,7 @@ def _clean_dir(path: Path, start: Path):
 
 
 def _resolve_git() -> Union[str, None]:
-    git_execs = subprocess.getoutput("which git")
+    git_execs = _which("git")
     if not isinstance(git_execs, str):
         git_execs = git_execs.decode()
     git_execs = git_execs.splitlines()
@@ -76,41 +92,75 @@ def _resolve_git() -> Union[str, None]:
 def _init_git(project_path: Path):
     git_exec = _resolve_git()
     if git_exec is None:
-        iprint("No usable git found, skipping...")
+        _iprint("No usable git found, skipping...")
         return
-    iprint("Initializing git repository...")
+    _iprint("Initializing git repository...")
     code = subprocess.call(
-        f"'{git_exec}' init .",
+        f'"{git_exec}" init .',
         cwd=str(project_path),
         shell=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
     if code != 0:
-        eprint("Failed to initialize git repo at: %s, code: %d", project_path, code)
+        _eprint("Failed to initialize git repo at: %s, code: %d", project_path, code)
         return
-    iprint("Writing .gitignore...")
+    _iprint("Writing .gitignore...")
     with open(Path(project_path, ".gitignore"), "w") as fs:
         fs.write(constants.GITIGNORE)
-    iprint("Adding files and makes an initial commit with message:")
-    iprint(constants.INITIAL_COMMIT_MSG)
+    _iprint(
+        "Adding files and makes an initial commit with message:\n    %s",
+        constants.INITIAL_COMMIT_MSG,
+    )
     code = subprocess.call(
-        f"'{git_exec}' add . && '{git_exec}' commit -m {constants.INITIAL_COMMIT_MSG}",
+        f'"{git_exec}" add . && "{git_exec}" commit -m {constants.INITIAL_COMMIT_MSG}',
         cwd=str(project_path),
         shell=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
     if code != 0:
-        eprint("Failed to perform initial commit, code: %d", code)
+        _eprint("Failed to perform initial commit, code: %d", code)
 
 
-def _resolve_python() -> Union[str, None]:
-    python_execs = subprocess.getoutput("which python")
-    if not isinstance(python_execs, str):
-        python_execs = python_execs.decode()
-    python_execs = python_execs.splitlines()
-    return python_execs[0] if len(python_execs) > 0 else None
+def _install_local_environment(
+    project_path: Path,
+    project_name: str,
+    project_description: str,
+    project_author: str,
+):
+    _iprint("Creating setup.py...")
+    with open(Path(project_path, "setup.py"), "w") as fs:
+        fs.write(
+            constants.SETUP_PY_FMT.format(
+                project_name, project_description, project_author
+            )
+        )
+    _iprint("Creating python source directory...")
+    python_dir_name = re.sub(r"[^\w]+", "_", project_name)
+    python_dir = Path(project_path, python_dir_name)
+    python_dir.mkdir(parents=True)
+    with open(Path(python_dir, "__init__.py"), "w") as fs:
+        # Just pass, we only want to create an empty file.
+        pass
+    _iprint("Installing local environment...")
+    activate_cmd = ". .venv/bin/activate"
+    venv_cmd = f'"{sys.executable}" -m venv .venv'
+    pip_cmd = "pip install -e ."
+    if system == "Windows":
+        activate_cmd = ".venv\\Scripts\\activate"
+    cmd = f"{venv_cmd} && {activate_cmd} && {pip_cmd}"
+    code = subprocess.call(
+        cmd,
+        cwd=str(project_path),
+        shell=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    if code != 0:
+        _eprint("Could not install local environment, code: %d", code)
+        return False
+    return True
 
 
 def main(prog: Union[str, None] = None):
@@ -140,13 +190,9 @@ def main(prog: Union[str, None] = None):
             target_dir = arg
         else:
             _usage(program, header_only=True, file=sys.stderr)
-            eprint("unknown subcommand '%s'", arg)
+            _eprint("unknown subcommand '%s'", arg)
             exit(1)
     assert project_name is not None, "project_name is None?!"
-    python_exec = _resolve_python()
-    if python_exec is None:
-        eprint("No python to use was found, how did you use this script?!")
-        exit(1)
     if target_dir is None:
         target_dir = Path.cwd()
     elif not isinstance(target_dir, Path):
@@ -158,36 +204,16 @@ def main(prog: Union[str, None] = None):
             is_empty = False
             break
         if not is_empty:
-            iprint("Directory %s already exists and is not empty", final_path)
+            _iprint("Directory %s already exists and is not empty", final_path)
             if _prompt("Clean directory and continue?"):
                 _clean_dir(final_path, final_path)
     else:
         final_path.mkdir(parents=True)
-    iprint("Creating project: %s", final_path)
-    iprint("Creating setup.py...")
-    with open(Path(final_path, "setup.py"), "w") as fs:
-        fs.write(
-            constants.SETUP_PY_FMT.format(
-                project_name, project_description, project_author
-            )
-        )
-    iprint("Creating python source directory...")
-    python_dir_name = re.sub(r"[^\w]+", "_", project_name)
-    python_dir = Path(final_path, python_dir_name)
-    python_dir.mkdir(parents=True)
-    with open(Path(python_dir, "__init__.py"), "w") as fs:
-        # Just pass, we only want to create an empty file.
-        pass
-    iprint("Installing local environment...")
-    code = subprocess.call(
-        f"'{python_exec}' -m venv .venv && . .venv/bin/activate && pip install -e .",
-        cwd=str(final_path),
-        shell=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
-    if code != 0:
-        eprint("Could not install local environment, code: %d", code)
+    _iprint("Creating project: %s", final_path)
+    if not _install_local_environment(
+        final_path, project_name, project_description, project_author
+    ):
+        _eprint("Failed to create python project!")
         exit(1)
     _init_git(final_path)
-    iprint("Project %s is now created!", project_name)
+    _iprint("Project %s is now created!", project_name)
