@@ -39,10 +39,15 @@ OPTIONS:
     -h/--help           shows this help message and exit with 0 code
     -d/--description    the project description, will be added to setup.py in the final project
     -a/--author         the project author, will be added to setup.py in the final project
+    -n/--no-git         do not initialize git repository
 ```
 
 ## Additonal
 Add alias to .bashrc (or .bash_alias) after pip install:
 ```console
 $ alias pyinit="python -m pyinit $@"
+```
+Oneliner to add alias to .bashrc:
+```console
+$ echo 'alias pyinit="python -m pyinit $@"' >> ~/.bashrc
 ```
