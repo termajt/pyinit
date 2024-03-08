@@ -10,19 +10,23 @@ from typing import Union as _U
 from pyinit import constants
 from pyinit.util import eprint, iprint
 
-system = platform.system()
-if system == "Windows":
+_system = platform.system()
+_stdout = sys.stdout
+_stderr = sys.stderr
+_subpout = subprocess.DEVNULL
+_subperr = subprocess.DEVNULL
+if _system == "Windows":
 
     def _which(cmd):
         return subprocess.getoutput(f"where {cmd}")
 
-elif system == "Linux":
+elif _system == "Linux":
 
     def _which(cmd):
         return subprocess.getoutput(f"which {cmd}")
 
 else:
-    raise NotImplementedError(f"script not implemented for {system}")
+    raise NotImplementedError(f"script not implemented for {_system}")
 
 
 def _prompt(prompt: str) -> bool:
@@ -63,8 +67,8 @@ def _init_git(project_path: Path):
         f'"{git_exec}" init .',
         cwd=str(project_path),
         shell=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        stdout=_subpout,
+        stderr=_subperr,
     )
     if code != 0:
         eprint("Failed to initialize git repo at: %s, code: %d", project_path, code)
@@ -80,8 +84,8 @@ def _init_git(project_path: Path):
         f'"{git_exec}" add . && "{git_exec}" commit -m {constants.INITIAL_COMMIT_MSG}',
         cwd=str(project_path),
         shell=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        stdout=_subpout,
+        stderr=_subperr,
     )
     if code != 0:
         eprint("Failed to perform initial commit, code: %d", code)
@@ -111,20 +115,28 @@ def _install_local_environment(
     activate_cmd = ". .venv/bin/activate"
     venv_cmd = f'"{sys.executable}" -m venv .venv'
     pip_cmd = "pip install -e ."
-    if system == "Windows":
+    if _system == "Windows":
         activate_cmd = ".venv\\Scripts\\activate"
     cmd = f"{venv_cmd} && {activate_cmd} && {pip_cmd}"
     code = subprocess.call(
         cmd,
         cwd=str(project_path),
         shell=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        stdout=_subpout,
+        stderr=_subperr,
     )
     if code != 0:
         eprint("Could not install local environment, code: %d", code)
         return False
     return True
+
+
+def _init(redirect_external_output: _Optional[bool]):
+    global _subpout
+    global _subperr
+    if redirect_external_output is not None and redirect_external_output:
+        _subpout = _stdout
+        _subperr = _stderr
 
 
 def create_python_project(
@@ -133,6 +145,7 @@ def create_python_project(
     project_description: _Optional[str] = None,
     project_author: _Optional[str] = None,
     no_git: bool = False,
+    redirect_external_output: _Optional[bool] = False,
 ):
     """Create a new python project that resides in `target_dir`.
 
@@ -141,7 +154,9 @@ def create_python_project(
     :param project_description: The project description, this will be added to setup.py.
     :param project_author: The project author, this will be added to setup.py.
     :param no_git: if `True` no git initialization will be done for the created project.
+    :param redirect_external_output: if `True` external calls made with `subprocess`-module will redirect to stdout/stderr.
     """
+    _init(redirect_external_output)
     if project_name is None:
         raise ValueError("project_name cannot be None")
     if target_dir is None:

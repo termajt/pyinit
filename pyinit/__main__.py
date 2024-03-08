@@ -73,14 +73,20 @@ if __name__ == "__main__":
     elif not isinstance(target_dir, Path):
         target_dir = Path(target_dir)
     try:
-        if create_python_project(
-            project_name,
-            target_dir=target_dir,
-            project_description=project_description,
-            project_author=project_author,
-            no_git=no_git,
-        ):
-            exit(0)
+
+        exit_code = (
+            0
+            if create_python_project(
+                project_name,
+                target_dir=target_dir,
+                project_description=project_description,
+                project_author=project_author,
+                no_git=no_git,
+            )
+            else 1
+        )
     except:
         eprint("Brutally failed to create python project: %s", project_name)
-    exit(1)
+        exit(1)
+    else:
+        exit(exit_code)
