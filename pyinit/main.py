@@ -169,6 +169,10 @@ def main(prog: Union[str, None] = None):
         program = Path(program).name
     else:
         program = prog
+    if len(args) < 1:
+        _usage(program, header_only=True, file=sys.stderr)
+        _eprint("No project name specified")
+        exit(1)
     project_name = None
     target_dir = None
     project_description = ""
