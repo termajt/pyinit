@@ -5,15 +5,12 @@ Creates a virtual environment using python venv module, package and setup.py for
 
 ## Project structure
 ```
-+--------------------+
-|project-name        |
-\                    |
- |- setup.py         |
- |- .gitignore       |
- |- project_name     |
-  \                  |
-   |- __init__.py    |
-   +-----------------+
+. <target-dir>
+└── <project-name>
+    ├── <package_name>
+    |   └── __init__.py
+    ├── setup.py 
+    └── .gitignore
 ```
 
 ## Installation
