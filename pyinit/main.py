@@ -59,6 +59,7 @@ def _usage(prog: str, header_only: bool = False, file: IO = sys.stdout):
         "    -a/--author         the project author, will be added to setup.py in the final project",
         file=file,
     )
+    print("    -n/--no-git         do not initialize git repository", file=file)
 
 
 def _prompt(prompt: str) -> bool:
@@ -177,6 +178,7 @@ def main(prog: Union[str, None] = None):
     target_dir = None
     project_description = ""
     project_author = ""
+    no_git = False
     while args:
         arg, *args = args
         if arg in ("-h", "--help"):
@@ -188,6 +190,8 @@ def main(prog: Union[str, None] = None):
         elif arg in ("-a", "--author"):
             arg, *args = args
             project_author = arg.replace('"', '\\"')
+        elif arg in ("-n", "--no-git"):
+            no_git = True
         elif project_name is None:
             project_name = arg
         elif target_dir is None:
@@ -219,5 +223,6 @@ def main(prog: Union[str, None] = None):
     ):
         _eprint("Failed to create python project!")
         exit(1)
-    _init_git(final_path)
+    if not no_git:
+        _init_git(final_path)
     _iprint("Project %s is now created!", project_name)
