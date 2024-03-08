@@ -11,9 +11,10 @@ else:
     requirements = []
 setup(
     name="pyinit",
-    version="1.0",
+    version="1.1",
     description="A python project initializer",
     author="temme",
     packages=find_packages(),
     install_requires=requirements,
+    entry_points={"console_scripts": ["pyinit = pyinit.cli:main"]},
 )

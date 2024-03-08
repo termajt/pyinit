@@ -30,8 +30,10 @@ else:
 
 
 def _prompt(prompt: str) -> bool:
-    data = input(f"{prompt} y/N{os.linesep}")
+    data = input(f"{prompt} y/N: ")
     data = data.strip()
+    if data == "":
+        return False
     while not data in ("Y", "y", "n", "N"):
         eprint("Invalid input '%s', please provide y/n", data)
         data = input(f"{prompt} y/N{os.linesep}")
@@ -169,6 +171,7 @@ def create_python_project(
         project_description = ""
     if project_author is None:
         project_author = ""
+    iprint("Creating project: %s...", project_name)
     final_path = Path(target_dir, project_name)
     if final_path.is_dir():
         is_empty = True
@@ -179,9 +182,11 @@ def create_python_project(
             iprint("Directory %s already exists and is not empty", final_path)
             if _prompt("Clean directory and continue?"):
                 _clean_dir(final_path, final_path)
+            else:
+                iprint("Project creation of '%s' aborted!", project_name)
+                return False
     else:
         final_path.mkdir(parents=True)
-    iprint("Creating project: %s", final_path)
     if not _install_local_environment(
         final_path, project_name, project_description, project_author
     ):
@@ -189,5 +194,5 @@ def create_python_project(
         return False
     if not no_git:
         _init_git(final_path)
-    iprint("Project %s is now created!", project_name)
+    iprint("OK! Project created: %s\n    %s", project_name, final_path)
     return True

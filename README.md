@@ -20,15 +20,8 @@ $ pip install .
 
 ## Usage
 ```console
-$ python pyinit <project-name> [<target-dir>] [-a <author>] [-d <project-description>]
-```
-If installed with pip:
-```console
-$ python -m pyinit <project-name> [<target-dir>] [-a <author>] [-d <project-description>]
-```
-
-```console
-$ python pyinit -h
+$ pyinit <project-name> [<target-dir>]
+$ pyinit -h
 Usage: pyinit [OPTIONS...] <project-name> <target-dir>
 
 POSITIONALS:
@@ -40,14 +33,5 @@ OPTIONS:
     -d/--description    the project description, will be added to setup.py in the final project
     -a/--author         the project author, will be added to setup.py in the final project
     -n/--no-git         do not initialize git repository
-```
-
-## Additonal
-Add alias to .bashrc (or .bash_alias) after pip install:
-```console
-$ alias pyinit="python -m pyinit $@"
-```
-Oneliner to add alias to .bashrc:
-```console
-$ echo 'alias pyinit="python -m pyinit $@"' >> ~/.bashrc
+    -v/--verbose        enable verbose output, shows all output of external commands aswell
 ```

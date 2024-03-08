@@ -7,7 +7,7 @@ from pyinit.util import eprint
 
 
 def _usage(prog: str, header_only: bool = False, file: IO = sys.stdout):
-    print(f"Usage: {prog} [OPTIONS...] <project-name> <target-dir>", file=file)
+    print(f"Usage: {prog} [OPTIONS...] <project-name> [<target-dir>]", file=file)
     if header_only:
         return
     print(file=file)
@@ -32,25 +32,31 @@ def _usage(prog: str, header_only: bool = False, file: IO = sys.stdout):
         file=file,
     )
     print("    -n/--no-git         do not initialize git repository", file=file)
+    print(
+        "    -v/--verbose        enable verbose output, shows all output of external commands aswell",
+        file=file,
+    )
 
 
-if __name__ == "__main__":
-    _, *args = sys.argv  # strip __main__.py from argv
-    program = "pyinit"
+def main():
+    """Main entry point for pyinit."""
+    program, *args = sys.argv  # strip __main__.py from argv
     if len(args) < 1:
         _usage(program, header_only=True, file=sys.stderr)
         eprint("No project name specified")
-        exit(1)
+        return 1
+    program = Path(program).name
     project_name = None
     target_dir = None
     project_description = ""
     project_author = ""
     no_git = False
+    verbose = False
     while args:
         arg, *args = args
         if arg in ("-h", "--help"):
             _usage(program)
-            exit(0)
+            return 0
         elif arg in ("-d", "--description"):
             arg, *args = args
             project_description = arg.replace('"', '\\"')
@@ -59,6 +65,8 @@ if __name__ == "__main__":
             project_author = arg.replace('"', '\\"')
         elif arg in ("-n", "--no-git"):
             no_git = True
+        elif arg in ("-v", "--verbose"):
+            verbose = True
         elif project_name is None:
             project_name = arg
         elif target_dir is None:
@@ -66,7 +74,7 @@ if __name__ == "__main__":
         else:
             _usage(program, header_only=True, file=sys.stderr)
             eprint("unknown subcommand '%s'", arg)
-            exit(1)
+            return 1
     assert project_name is not None, "project_name is None?!"
     if target_dir is None:
         target_dir = Path.cwd()
@@ -82,11 +90,16 @@ if __name__ == "__main__":
                 project_description=project_description,
                 project_author=project_author,
                 no_git=no_git,
+                redirect_external_output=verbose,
             )
             else 1
         )
     except:
         eprint("Brutally failed to create python project: %s", project_name)
-        exit(1)
+        return 1
     else:
-        exit(exit_code)
+        return exit_code
+
+
+if __name__ == "__main__":
+    exit(main())
